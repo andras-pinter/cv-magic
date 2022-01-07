@@ -7,7 +7,7 @@ pub struct Cli {
         name = "ip address",
         short = "a",
         long = "address",
-        default_value = "127.0.0.1"
+        default_value = "0.0.0.0"
     )]
     ip: String,
     #[structopt(name = "port", short = "p", long = "port", default_value = "80")]
