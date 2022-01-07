@@ -26,10 +26,11 @@ async fn main(args: cli::Cli) {
                     .map(move || {
                         index
                             .render()
+                            .map(warp::reply::html)
                             .map(|rendered| warp::reply::with_status(rendered, StatusCode::OK))
                             .unwrap_or_else(|_| {
                                 warp::reply::with_status(
-                                    "Internal Server Error".to_string(),
+                                    warp::reply::html("Internal Server Error".to_string()),
                                     StatusCode::INTERNAL_SERVER_ERROR,
                                 )
                             })
