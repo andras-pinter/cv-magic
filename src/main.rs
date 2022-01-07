@@ -21,6 +21,8 @@ async fn main(args: cli::Cli) {
     match args.addr() {
         Ok(addr) => match create_index(args.config_file) {
             Ok(index) => {
+                let current_dir = std::env::current_dir()
+                    .unwrap_or_default();
                 let routes = warp::get()
                     .and(warp::path::end())
                     .map(move || {
@@ -37,7 +39,10 @@ async fn main(args: cli::Cli) {
                     })
                     .or(warp::path("download").map(|| {
                         warp::reply::with_status("Not Implemented", StatusCode::NOT_IMPLEMENTED)
-                    }));
+                    }))
+                    .or(warp::path("assets").and(
+                        warp::fs::dir(current_dir.join("assets"))
+                    ));
 
                 println!("Serving on: http://{}", addr);
                 warp::serve(routes).run(addr).await;
