@@ -87,16 +87,26 @@ mod tests {
         [sections.second]
         title = "senior sw dev"
         year = "2017"
+
+        [sections.technologies]
+        languages = ["rust", "python"]
         "#,
         )
         .expect("Invalid configuration");
         let mut renderer = Renderer::try_from(
             r#"
         {% for key, section in sections -%}
+            {% if key != "technologies" -%}
             <h1>{{section.title}}</h1>
             <h2>{{section.year}}</h2>
+            {% endif -%}
         {% endfor -%}
         Recent: {{ sections.second.title }}
+        <ul>
+            {% for lang in sections.technologies.languages -%}
+            <li>{{ lang }}</li>
+            {% endfor -%}
+        </ul>
         "#,
         )
         .expect("Invalid template");
@@ -112,9 +122,13 @@ mod tests {
             rendering.unwrap().trim(),
             r#"<h1>junior sw dev</h1>
             <h2>2010</h2>
-        <h1>senior sw dev</h1>
+            <h1>senior sw dev</h1>
             <h2>2017</h2>
-        Recent: senior sw dev"#
+            Recent: senior sw dev
+        <ul>
+            <li>rust</li>
+            <li>python</li>
+            </ul>"#
         )
     }
 }
