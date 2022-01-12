@@ -7,7 +7,7 @@ mod parser;
 
 use error::Result;
 use parser::Config;
-use rocket::fs::{relative, FileServer};
+use rocket::fs::FileServer;
 use rocket::State;
 use rocket_dyn_templates::Template;
 
@@ -21,11 +21,12 @@ fn render(config: &State<Config>) -> Template {
 async fn main(args: cli::Cli) {
     match Config::new(args.config_file) {
         Ok(config) => {
+            let current_dir = std::env::current_dir().unwrap_or_default();
             rocket::build()
                 .manage(config)
                 .attach(Template::fairing())
                 .mount("/", routes![render])
-                .mount("/assets", FileServer::from(relative!("assets")))
+                .mount("/assets", FileServer::from(current_dir.join("assets")))
                 .launch()
                 .await
                 .expect("Failed to start server");
