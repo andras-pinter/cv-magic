@@ -1,54 +1,35 @@
+#[macro_use]
+extern crate rocket;
+
 mod cli;
 mod error;
-mod index;
 mod parser;
-mod renderer;
 
 use error::Result;
 use parser::Config;
-use std::sync::Arc;
-use warp::{http::StatusCode, Filter};
+use rocket::fs::{relative, FileServer};
+use rocket::State;
+use rocket_dyn_templates::Template;
 
-fn create_index(config_file: std::path::PathBuf) -> Result<Arc<index::Index>> {
-    Config::new(config_file)
-        .and_then(index::Index::new)
-        .map(Arc::new)
+#[get("/")]
+fn render(config: &State<Config>) -> Template {
+    Template::render("index", config.inner())
 }
 
 #[paw::main]
-#[tokio::main]
+#[rocket::main]
 async fn main(args: cli::Cli) {
-    match args.addr() {
-        Ok(addr) => match create_index(args.config_file) {
-            Ok(index) => {
-                let current_dir = std::env::current_dir()
-                    .unwrap_or_default();
-                let routes = warp::get()
-                    .and(warp::path::end())
-                    .map(move || {
-                        index
-                            .render()
-                            .map(warp::reply::html)
-                            .map(|rendered| warp::reply::with_status(rendered, StatusCode::OK))
-                            .unwrap_or_else(|_| {
-                                warp::reply::with_status(
-                                    warp::reply::html("Internal Server Error".to_string()),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
-                                )
-                            })
-                    })
-                    .or(warp::path("download").map(|| {
-                        warp::reply::with_status("Not Implemented", StatusCode::NOT_IMPLEMENTED)
-                    }))
-                    .or(warp::path("assets").and(
-                        warp::fs::dir(current_dir.join("assets"))
-                    ));
-
-                println!("Serving on: http://{}", addr);
-                warp::serve(routes).run(addr).await;
-            }
-            Err(err) => eprintln!("{}", err),
-        },
+    match Config::new(args.config_file) {
+        Ok(config) => {
+            rocket::build()
+                .manage(config)
+                .attach(Template::fairing())
+                .mount("/", routes![render])
+                .mount("/assets", FileServer::from(relative!("assets")))
+                .launch()
+                .await
+                .expect("Failed to start server");
+        }
         Err(err) => eprintln!("{}", err),
     }
 }
