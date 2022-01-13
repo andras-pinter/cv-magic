@@ -19,7 +19,7 @@ impl TryFrom<&'static str> for Config {
 }
 
 impl Config {
-    pub fn new<P: AsRef<std::path::Path>>(path: P) -> crate::Result<Self> {
+    pub fn new<P: AsRef<std::path::Path>>(path: P) -> crate::error::Result<Self> {
         let mut buffer = Vec::new();
 
         let mut file = std::fs::File::open(path)?;
