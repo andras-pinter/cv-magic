@@ -26,7 +26,12 @@ async fn download(
 ) -> Result<rocket::fs::NamedFile, Custom<String>> {
     let tmpd = tempfile::TempDir::new().map_err(error::Error::from)?;
     let mut tmpf = std::fs::File::create(tmpd.path().join(CV_TEX)).map_err(error::Error::from)?;
-    tmpf.write_all(renderer.render(config)?.as_bytes())
+    let rendering = renderer
+        .render(config)?
+        .replace("{ ", "{")
+        .replace(" }", "}");
+
+    tmpf.write_all(rendering.as_bytes())
         .map_err(error::Error::from)?;
     std::fs::copy(
         renderer.current_dir().join("templates").join(CV_CLASS),
