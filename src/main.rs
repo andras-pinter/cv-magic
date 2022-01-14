@@ -44,6 +44,7 @@ async fn download(
         .arg("-pdf")
         .arg("-f")
         .arg("-quiet")
+        .arg("-interaction=nonstopmode")
         .status()
         .map_err(error::Error::from)?;
 
