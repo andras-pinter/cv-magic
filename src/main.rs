@@ -7,6 +7,7 @@ mod parser;
 mod renderer;
 
 use parser::Config;
+use renderer::prelude::*;
 use rocket::fs::FileServer;
 use rocket::response::status::Custom;
 use rocket::State;
@@ -24,23 +25,29 @@ async fn download(
     renderer: &State<renderer::Render>,
 ) -> Result<rocket::fs::NamedFile, Custom<String>> {
     let tmpd = tempfile::TempDir::new().map_err(error::Error::from)?;
-    let mut tmpf = std::fs::File::create(tmpd.path().join("cv.tex")).map_err(error::Error::from)?;
+    let mut tmpf = std::fs::File::create(tmpd.path().join(CV_TEX)).map_err(error::Error::from)?;
     tmpf.write_all(renderer.render(config)?.as_bytes())
         .map_err(error::Error::from)?;
     std::fs::copy(
-        renderer.current_dir().join("templates").join("cv.cls"),
-        tmpd.path().join("cv.cls"),
+        renderer.current_dir().join("templates").join(CV_CLASS),
+        tmpd.path().join(CV_CLASS),
     )
     .map_err(error::Error::from)?;
-    fs_extra::dir::copy(
-        renderer.current_dir().join("assets"),
-        tmpd.path(),
-        &fs_extra::dir::CopyOptions::new(),
-    )
-    .map_err(error::Error::from)?;
-    let status = std::process::Command::new("latexmk")
+    if let Some(path) = config.globals.get(PROFILE_PIC) {
+        let path = renderer
+            .current_dir()
+            .join(path.as_str().unwrap_or_default());
+        let filename = path
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .map(String::from)
+            .unwrap_or_default();
+        std::fs::copy(path, tmpd.path().join(filename)).map_err(error::Error::from)?;
+    }
+
+    let command = std::process::Command::new("latexmk")
         .current_dir(tmpd.path())
-        .arg("cv.tex")
+        .arg(CV_TEX)
         .arg("-pdf")
         .arg("-f")
         .arg("-quiet")
@@ -48,7 +55,7 @@ async fn download(
         .status()
         .map_err(error::Error::from)?;
 
-    match status.code() {
+    match command.code() {
         Some(0) => rocket::fs::NamedFile::open(tmpd.path().join("cv.pdf"))
             .await
             .map_err(|e| error::Error::from(e).into()),
