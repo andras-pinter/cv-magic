@@ -9,8 +9,6 @@ pub enum Error {
     InvalidConfiguration(#[from] toml::de::Error),
     #[error("io error: {0}")]
     IOError(#[from] std::io::Error),
-    #[error("fs error: {0}")]
-    FSError(#[from] fs_extra::error::Error),
     #[error("renderer error: {0}")]
     RendererError(#[from] tera::Error),
     #[error("invalid format")]
