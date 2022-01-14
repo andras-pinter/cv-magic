@@ -45,21 +45,32 @@ async fn download(
         std::fs::copy(path, tmpd.path().join(filename)).map_err(error::Error::from)?;
     }
 
-    let command = std::process::Command::new("latexmk")
+    let mut command = std::process::Command::new("latexmk");
+    let child = command
         .current_dir(tmpd.path())
         .arg(CV_TEX)
         .arg("-pdf")
         .arg("-f")
-        .arg("-quiet")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .arg("-interaction=nonstopmode")
-        .status()
+        .spawn()
         .map_err(error::Error::from)?;
+    let output = child.wait_with_output().map_err(error::Error::from)?;
 
-    match command.code() {
+    match output.status.code() {
         Some(0) => rocket::fs::NamedFile::open(tmpd.path().join("cv.pdf"))
             .await
             .map_err(|e| error::Error::from(e).into()),
-        _ => Err(error::Error::InternalRendererError.into()),
+        _ => {
+            eprintln!("Generation error occurred");
+            eprintln!("------- stdout log --------");
+            eprintln!("{}", String::from_utf8_lossy(&output.stdout));
+            eprintln!("------- stderr log --------");
+            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+            eprintln!("-------- end logs ---------");
+            Err(error::Error::InternalRendererError.into())
+        }
     }
 }
 
